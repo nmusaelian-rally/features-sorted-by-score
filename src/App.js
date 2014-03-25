@@ -1,0 +1,83 @@
+Ext.define('CustomApp', {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    scopeType: 'release',
+    comboboxConfig: {
+        fieldLabel: 'Select a Release:',
+        labelWidth: 100,
+        width: 300
+    },
+    
+launch: function() {
+        var that = this;
+        var release;
+   	this._relComboBox = Ext.create('Rally.ui.combobox.ReleaseComboBox',{
+   		listeners:{
+   			ready: function(combobox){
+   				release = combobox.getRecord(); 
+   				this._loadFeatures(release);
+   			},
+   			select: function(combobox){
+   				release = combobox.getRecord(); 
+   				this._loadFeatures(release);
+   			},
+   			scope: this
+   		}
+   	});
+   	this.add(that._relComboBox);
+   },
+   
+   _loadFeatures: function(release){
+        var releaseRef;
+        var releaseStart = Rally.util.DateTime.toIsoString(release.get('ReleaseStartDate'),true);
+        console.log('releaseStart', releaseStart);
+   	releaseRef = release.get('_ref');
+   	var myStoreConfig = 
+	{
+   		model: 'PortfolioItem/Feature',
+		pageSize: 200,
+		remoteSort: false,
+   		fetch: ['Name','FormattedID','WSJFScore', 'JobSize'],
+   		filters:[
+   			{
+   				property : 'Release',
+   				operator : '=',
+   				value : releaseRef
+   			}
+   		],
+		sorters:[
+		    {
+			property: 'WSJFScore',
+			direction: 'DESC'
+		    }
+		]
+   	};
+	this._updateGrid(myStoreConfig);
+   },
+   
+   _createGrid: function(myStoreConfig){
+   	this._myGrid = Ext.create('Rally.ui.grid.Grid', {
+		storeConfig: myStoreConfig,
+   		columnCfgs: [
+   		        {text: 'ID', dataIndex: 'FormattedID', xtype: 'templatecolumn',
+                            tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate')},
+   			{text: 'Name', dataIndex: 'Name', flex: 2},
+   			{text: 'WSJFScore', dataIndex: 'WSJFScore', flex: 1},
+			{text: 'JobSize', dataIndex: 'JobSize', flex: 1},
+   		],
+		height: 650
+
+   	});
+   	this.add(this._myGrid);
+   },
+   
+   _updateGrid: function(myStore){
+   	if(this._myGrid === undefined){
+   		this._createGrid(myStore);
+   	}
+   	else{
+		this._myGrid.store.clearFilter(true);
+		this._myGrid.store.filter([{property : 'Release',value : this._relComboBox.getValue()}])
+   	}
+   }
+});
